@@ -52,7 +52,7 @@ function animate() {
   
   const bassLevel = bassSum / 10;
   
-  const normalizedBassLevel = normalize(bassLevel, 0, 255, 20, 0);
+  const normalizedBassLevel = normalize(bassLevel, 0, 255, 20, -12);
   
-  svgPath.setAttribute('d', `M 11, 15 Q 6, ${normalizedBassLevel} 3, 15`)
+  svgPath.setAttribute('d', `M 22, 20 Q 12, ${normalizedBassLevel} 2, 20`)
 }

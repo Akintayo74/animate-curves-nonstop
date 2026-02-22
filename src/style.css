@@ -21,6 +21,17 @@ body {
   min-height: 100vh;
 }
 
+#app {
+    display: grid;
+    place-items: center;
+    width: 100%;
+}
+
+svg {
+    width: 500px;
+    /*overflow: hidden;*/
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
