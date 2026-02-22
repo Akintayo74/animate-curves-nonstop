@@ -20,6 +20,14 @@ export const normalize = (
   return (newScaleMax - newScaleMin) * standardNormalization + newScaleMin;
 };
 
+export const lerp = (
+  current,
+  target,
+  factor
+) => {
+  return current + (target - current) * factor;
+};
+
 export const clampedNormalize = (
   value,
   currentScaleMin,

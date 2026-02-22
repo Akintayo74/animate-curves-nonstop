@@ -29,7 +29,7 @@ body {
 
 svg {
     width: 500px;
-    /*overflow: hidden;*/
+    overflow: visible;
 }
 
 @media (prefers-color-scheme: light) {

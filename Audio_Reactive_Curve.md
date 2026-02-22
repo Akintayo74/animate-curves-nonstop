@@ -144,6 +144,126 @@ The last one (beat detection + spring physics) would look especially satisfying 
 
 ---
 
+## Phase 2: Making It Expressive (The Upgrade)
+
+### The Goal
+The basic version maps only Y values — it bobs but doesn't feel alive. The goal is **juice**: sensitive, wriggling, dancing, organic. Like a spine, not a stick.
+
+### Key Decisions Made
+
+**Quadratic → Cubic Bezier**
+
+A quadratic (`Q`) has one control point. A cubic (`C`) has two. The wriggle comes from two control points pulling in *different directions simultaneously*. That tension is where the organism lives.
+
+```
+// quadratic
+M startX,startY  Q controlX,controlY  endX,endY
+
+// cubic
+M startX,startY  C control1X,control1Y  control2X,control2Y  endX,endY
+```
+
+**Opposite directions for the two control points**
+
+Same direction = the curve bobs as a rigid unit (still just a quadratic in spirit).
+Opposite directions = the curve *twists against itself* — snake-like, organic.
+
+You get this for free just by swapping `outMin` and `outMax` in the mapping for control2Y:
+
+```
+target1Y = map(bassLevel, 0, 255, centerY, topY)      // pulls up
+target2Y = map(bassLevel, 0, 255, centerY, bottomY)   // pulls down (swapped)
+```
+
+**Smoothing via Lerp, not Framer Motion**
+
+Framer Motion animates between *discrete states*. Audio is a *continuous stream* — a new target value every frame. Lerp is the right tool:
+
+```
+currentY = lerp(currentY, targetY, 0.08)
+```
+
+Every frame, current value eases toward whatever the target is *right now*. The `0.08` smoothing factor is tuned by feel — closer to 0 is dreamier, closer to 1 is snappier.
+
+**Framer Motion still has a role** — beat detection. When a sharp bass spike is detected (a "hit"), a Framer Motion spring snap-back would feel physical and punchy. Lerp for continuous movement, Framer Motion for discrete events.
+
+### Frequency Hierarchy
+
+Alive things have *hierarchy* — one dominant movement with subordinate details. Mapping everything equally = visual noise, not life.
+
+| Band | Buckets | Drives | Why |
+|---|---|---|---|
+| Bass | 0–7 | control1Y (up) and control2Y (down) | The big spine movement |
+| Mids | 8–64 | control1X (lateral drift) | Secondary wander |
+| Highs | 65–127 | Small noise added to control2Y | Nervous, alive texture |
+
+### Expanded Pseudocode (The Full Upgrade)
+
+```
+// --- Pipeline ---
+[Existing Audio Pipeline]
+        ↓
+[Extract bass, mids, highs from dataArray]
+        ↓
+[Compute raw target values for control1Y, control1X, control2Y]
+        ↓
+[Lerp current values toward targets — smoothing]
+        ↓
+[Build cubic bezier path string]
+        ↓
+[Update SVG path attribute]
+
+
+// --- Stage 1: Extract frequency bands ---
+
+bassLevel = average of dataArray[0..7]
+midLevel  = average of dataArray[8..64]
+highLevel = average of dataArray[65..127]
+
+
+// --- Stage 2: Map bands to control point properties ---
+
+target1Y = map(bassLevel, 0, 255, centerY, topY)
+target2Y = map(bassLevel, 0, 255, centerY, bottomY)   // opposite direction
+
+target1X = map(midLevel, 0, 255, control1XMin, control1XMax)
+
+target2Y = target2Y + map(highLevel, 0, 255, 0, smallNudgeAmount)  // layer highs on top
+
+
+// --- Stage 3: Lerp current values toward targets ---
+
+// declared outside animate():
+current1X = resting1X
+current1Y = centerY
+current2X = resting2X
+current2Y = centerY
+
+// inside animate():
+current1X = lerp(current1X, target1X, smoothingFactor)
+current1Y = lerp(current1Y, target1Y, smoothingFactor)
+current2X = lerp(current2X, target2X, smoothingFactor)
+current2Y = lerp(current2Y, target2Y, smoothingFactor)
+
+
+// --- Stage 4: Build path and update DOM ---
+
+pathElement.setAttribute('d',
+  `M startX,startY C current1X,current1Y current2X,current2Y endX,endY`
+)
+
+
+// --- Utilities ---
+
+function lerp(current, target, factor):
+  return current + (target - current) * factor
+
+function map(value, inMin, inMax, outMin, outMax):
+  return outMin + (value - inMin) / (inMax - inMin) * (outMax - outMin)
+```
+
+---
+
 ## Working Style & Ground Rules
 
 - **Akintayo writes the code.** Claude assists only when genuinely stuck — not before.
@@ -157,9 +277,11 @@ The last one (beat detection + spring physics) would look especially satisfying 
 ## Current Status
 
 ✅ Full mental model established and understood  
-⬜ Stage 1: AudioContext setup  
-⬜ Stage 2: Audio element + source node  
-⬜ Stage 3: Analyser node + signal chain  
-⬜ Stage 4: Uint8Array + getByteFrequencyData  
-⬜ Stage 5: requestAnimationFrame loop  
-⬜ Stage 6: Mapping + SVG path update
+✅ Basic audio pipeline implemented (quadratic, Y-only mapping)  
+✅ Phase 2 mental model established (cubic, lerp, frequency hierarchy)  
+⬜ Upgrade to cubic bezier path  
+⬜ Extract bass / mids / highs from dataArray  
+⬜ Map bands to control1Y, control2Y (opposite), control1X  
+⬜ Add lerp smoothing for all four current values  
+⬜ Layer high frequency noise onto control2Y  
+⬜ Beat detection + Framer Motion spring pulse (future)

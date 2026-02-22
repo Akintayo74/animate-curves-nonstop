@@ -1,9 +1,14 @@
-import { normalize } from './utils.js';
+import { normalize, lerp } from './utils.js';
 
 //Step 1 -- Create an Audio Context
 let audioContext = null;
 let analyser = null;
 let dataArray = null;
+
+let current1X = 6;
+let current1Y = 20;
+let current2X = 18;
+let current2Y = 20;
 
 const playButton = document.getElementById("playButton");
 const audioElement = document.querySelector("audio");
@@ -46,13 +51,27 @@ function animate() {
   
   analyser.getByteFrequencyData(dataArray);
   
-  const bassArray = dataArray.slice(0, 10);
+  const bassArray = dataArray.slice(0, 7); 
+  const bassSum = bassArray.reduce((total, currentNumber) => total + currentNumber, 0); 
+  const bassLevel = bassSum / 7;
   
-  const bassSum = bassArray.reduce((total, currentNumber) => total + currentNumber, 0);
+  const midArray = dataArray.slice(8, 64);
+  const midSum = midArray.reduce((total, currentNumber) => total + currentNumber, 0);
+  const midLevel = midSum / 56;
   
-  const bassLevel = bassSum / 10;
+  const highArray = dataArray.slice(65, 127);
+  const highSum = highArray.reduce((total, currentNumber) => total + currentNumber, 0);
+  const highLevel = highSum / 62;
   
   const normalizedBassLevel = normalize(bassLevel, 0, 255, 20, -12);
+  let oppositeNormalizedBassLevel = normalize(bassLevel, 0, 255, 20, 44);
+  const normalizedMidLevel = normalize(midLevel, 0, 255, 2, 16);
+  oppositeNormalizedBassLevel += normalize(highLevel, 0, 255, 0, 5);
   
-  svgPath.setAttribute('d', `M 22, 20 Q 12, ${normalizedBassLevel} 2, 20`)
+  current1X = lerp(current1X, normalizedMidLevel, 0.08);
+  current1Y = lerp(current1Y, normalizedBassLevel, 0.08);
+  current2X = lerp(current2X, 18, 0.08);
+  current2Y = lerp(current2Y, oppositeNormalizedBassLevel, 0.08);
+  
+  svgPath.setAttribute('d', `M 22, 20 C ${current1X}, ${current1Y}, ${current2X}, ${current2Y} 2, 20`)
 }
